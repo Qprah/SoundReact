@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SoundReact</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: Arial, sans-serif; background: #111; color: #fff; text-align: center; overflow: hidden; }
+        canvas { display: block; background: black; cursor: crosshair; }
+        .controls { position: absolute; top: 10px; left: 50%; transform: translateX(-50%); background: rgba(0, 0, 0, 0.7); padding: 10px; border-radius: 8px; }
+        button { padding: 10px 15px; border: none; background: #ff0080; color: white; font-size: 16px; cursor: pointer; margin: 5px; }
+        button:hover { background: #ff4da6; }
+        select { padding: 5px; background: #333; color: white; border-radius: 5px; font-size: 16px; }
+    </style>
+</head>
+<body>
+
+    <div class="controls">
+        <button onclick="startAudio()">Start Audio</button>
+        <button onclick="stopAudio()">Stop Audio</button>
+        <button onclick="clearCanvas()">Clear Canvas</button>
+        <input type="file" id="audio-file" accept="audio/*" onchange="handleAudioFile(event)">
+        <select id="brush-type" onchange="changeBrushType(event)">
+            <option value="round">Round Brush</option>
+            <option value="square">Square Brush</option>
+            <option value="diamond">Diamond Brush</option>
+        </select>
+    </div>
+    
+    <canvas id="canvas"></canvas>
+
+    <script>
+        function clearCanvas() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height); 
+        }
+
+        const canvas = document.getElementById("canvas");
+        const ctx = canvas.getContext("2d");
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+
+        let audioContext, analyser, microphone, dataArray, source;
+        let running = false;
+        let painting = false;
+        let brushType = "round";  // Default brush type
+
+        async function startAudio() {
+            if (running) return;
+            running = true;
+
+            // Initialize Web Audio API
+            audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            analyser = audioContext.createAnalyser();
+            analyser.fftSize = 32; 
+            dataArray = new Uint8Array(analyser.frequencyBinCount);
+
+            // Get microphone input
+            const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+            microphone = audioContext.createMediaStreamSource(stream);
+            microphone.connect(analyser);
+
+            animateBrush();
+        }
+
+        function stopAudio() {
+            if (!running) return;
+            running = false;
+            audioContext.close();
+        }
+
+        function getAudioData() {
+            analyser.getByteFrequencyData(dataArray);
+            const volume = dataArray.reduce((a, b) => a + b, 0) / dataArray.length; // Average volume
+            const pitch = dataArray.indexOf(Math.max(...dataArray)); // Peak frequency index
+            return { volume, pitch };
+        }
+
+        function animateBrush() {
+            if (!running) return;
+            requestAnimationFrame(animateBrush);
+        }
+
+        // Brush Event Listeners
+        canvas.addEventListener("mousedown", () => { painting = true; });
+        canvas.addEventListener("mouseup", () => { painting = false; ctx.beginPath(); });
+        canvas.addEventListener("mousemove", draw);
+
+        function draw(event) {
+            if (!painting || !running) return;
+            const { volume, pitch } = getAudioData();
+
+            // Dynamic Brush Settings
+            const thickness = Math.max(2, (volume/1.5)); // Volume controls thickness
+            const hue = (pitch * 500) % 1000;
+            const opacity = Math.min(1, volume / 100); // Volume affects transparency
+            const brushColor = `hsla(${hue}, 100%, 50%, ${opacity})`;
+
+            ctx.lineWidth = thickness;
+            ctx.lineCap = "round"; // Default cap for round brush, adjust for other brushes
+            ctx.strokeStyle = brushColor;
+
+            // Draw based on selected brush type
+            if (brushType === "round") {
+                ctx.lineJoin = "round";
+            } else if (brushType === "square") {
+                ctx.lineJoin = "bevel";
+                ctx.lineCap = "square";
+            } else if (brushType === "diamond") {
+                ctx.lineJoin = "miter";
+                ctx.lineCap = "round";
+                ctx.setLineDash([thickness, thickness]);  // Diamond-shaped dashes for "diamond" effect
+            }
+
+            ctx.lineTo(event.clientX, event.clientY);
+            ctx.stroke();
+            ctx.beginPath();
+            ctx.moveTo(event.clientX, event.clientY);
+        }
+
+        function changeBrushType(event) {
+            brushType = event.target.value;
+        }
+
+        window.addEventListener("resize", () => {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        });
+    </script>
+
+</body>
+</html>

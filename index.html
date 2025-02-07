@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SoundReact</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: Arial, sans-serif; background: #111; color: #fff; text-align: center; overflow: hidden; }
+        canvas { display: block; background: black; cursor: crosshair; }
+        .controls { position: absolute; top: 10px; left: 50%; transform: translateX(-50%); background: rgba(0, 0, 0, 0.7); padding: 10px; border-radius: 8px; }
+        button { padding: 10px 15px; border: none; background: #ff4da6; color: white; font-size: 16px; cursor: pointer; margin: 5px; }
+        button:hover { background: #ff4da6; }
+        input[type="file"] { margin-top: 20px; }
+        #timeline { width: 100%; margin-top: 10px; }
+    </style>
+</head>
+<body>
+
+    <div class="controls">
+        <button onclick="toggleAudio()">Play/Pause Audio</button>
+        <button onclick="clearCanvas()">Clear Canvas</button>
+        <select id="brushType" onchange="changeBrushType()">
+            <option value="default">Default</option>
+            <option value="splatter">Splatter</option>
+            <option value="wave">IDK</option>
+        </select>
+        <input type="file" id="audio-file" accept="audio/*" onchange="handleAudioFile(event)">
+        <input type="range" id="timeline" value="0" step="1" onchange="seekAudio()">
+    </div>
+    
+    <canvas id="canvas"></canvas>
+    <script src ="script.js"></script>
+
+</body>
+</html>
